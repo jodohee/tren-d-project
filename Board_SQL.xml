@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egov.service.impl.BoardMapper">
+<!-- notice board -->
+	<select id="noticeSelectList" resultType="egovMap"> 
+	SELECT B.* FROM (
+		SELECT ROWNUM RN, A.* FROM (
+			SELECT    NOTICENUM
+					, NOTICETITLE
+					, NOTICECONT
+					, to_char(NOTICEDATE,'yyyy-mm-dd') NOTICEDATE 
+					, NOTICENAME
+					, NOTICESTATE
+		FROM 	
+				NOTICE_BOARD
+			<if test="searchKeyword != null and searchKeyword !=''">
+					WHERE ${searchCondition} LIKE '%'|| '${searchKeyword}' || '%'
+			</if>
+			ORDER BY NOTICESTATE DESC, NOTICENUM DESC  
+				) A ) B
+		WHERE
+				RN BETWEEN '${firstIndex}' AND '${lastIndex}'
+				
+	</select>
+	
+	<select id="noticeSelectTotal" resultType="int">
+	
+		SELECT COUNT(*) FROM NOTICE_BOARD
+		
+			
+			<if test="searchKeyword != null and searchKeyword !=''">
+					WHERE ${searchCondition} LIKE '%'||#{searchKeyword}||'%'
+			</if>
+				
+	
+	</select>
+<!-- faq board -->
+	<select id="faqSelectList" resultType="egovMap">
+	SELECT B.* FROM (
+		SELECT ROWNUM RN, A.* FROM (
+			SELECT    FAQNUM
+					, DECODE(FAQCODE,'1','회원','2','주문/결제','3','상품/배송','4','취소/교환/환불','5','중고','6','셔플','기타') FAQCODE
+					, FAQTITLE
+					, FAQCONT
+					, FAQANS
+			FROM
+					FAQ_BOARD
+			WHERE
+					1=1
+				<if test='faq_page_no != "0"'>
+				AND	FAQCODE = #{faq_page_no}
+				</if>
+				) A ) B
+		WHERE
+				RN BETWEEN '${firstIndex}' AND '${lastIndex}'
+	</select>
+	
+	<select id="faqSelectTotal" resultType="int">
+	
+		SELECT COUNT(*) FROM FAQ_BOARD
+		WHERE
+				1=1
+			<if test='faq_page_no != "0"'>
+			AND	FAQCODE = #{faq_page_no}
+			</if>
+	
+	</select>
+<!-- answer board -->	
+	<select id="answerSelectList" resultType="egovMap">
+	SELECT B.* FROM (
+		SELECT ROWNUM RN, A.* FROM ( 
+			SELECT A1.QNANUM QNANUM 
+			    , A1.USERID USERID 
+			    , A1.PROUNQ PROUNQ 
+			    , A1.QNATITLE QNATITLE 
+			    , A1.QNACONT QNACONT 
+			    , TO_CHAR(A1.QNADATE,'YYYY-MM-DD') QNADATE 
+			    , DECODE(A1.QNACODE,'1','회원','2','주문/결제','3','상품/배송','4','취소/교환/환불','5','중고','6','셔플','7','기타') QNACODE 
+			    , A2.RECONT RECONT 
+			    , TO_CHAR(A2.REDATE,'YYYY-MM-DD') REDATE 
+		FROM 	ANSWER_BOARD A1 , ANSWER_BOARD_RE A2 
+		WHERE 	A1.QNANUM = A2.QNANUM(+) 
+			ORDER BY QNANUM DESC
+				) A ) B
+		WHERE
+				RN BETWEEN '${firstIndex}' AND '${lastIndex}'
+	</select>
+	
+	<select id="answerSelectModify" resultType="answerVO">   
+	
+		SELECT    QNANUM
+				, USERID
+				, PROUNQ
+				, QNATITLE
+				, QNACONT
+				, QNADATE
+				, QNACODE
+		FROM 
+				ANSWER_BOARD
+		WHERE
+				USERID = '${userid}'
+		AND
+				PROUNQ = '${prounq}'
+
+	
+	</select>
+	
+	<select id="answerSelectTotal" resultType="int">
+	
+		SELECT COUNT(*) FROM ANSWER_BOARD
+				<!-- where prounq = '${prounq}'  (상세페이지 이동시 상품 번호를 받아와야한다.)-->
+	
+	</select>
+	
+	
+	
+	<!-- ==================================================================== -->
+	<insert id="answerInsert">
+	
+		INSERT INTO ANSWER_BOARD (    QNANUM
+									, USERID
+									, PROUNQ
+									, QNATITLE
+									, QNACONT
+									, QNADATE
+									, QNACODE )
+			VALUES( (SELECT NVL(MAX(QNANUM),'0')+1 FROM ANSWER_BOARD)
+					, '${userid}'	<!-- 세션값 적용! -->
+					, '${prounq}'	<!-- 상품 번호 적용 -->
+					, #{qnatitle}
+					, #{qnacont}
+					, sysdate
+					, #{qnacode} )
+	
+	</insert>
+	
+	<update id="answerUpdate">
+	
+		UPDATE ANSWER_BOARD
+				SET
+						  QNATITLE = '${qnatitle}'
+						, QNACONT = '${qnacont}'
+						, QNACODE = '${qnacode}'
+			WHERE
+					QNANUM = '${qnanum}'
+	</update>
+	
+	<delete id="answerDelete">
+	
+		DELETE FROM ANSWER_BOARD
+		WHERE
+				QNANUM = '${qnanum}'
+		
+	</delete>
+	
+<!-- review board -->
+	
+	<select id="reviewSelect" resultType="egovMap">
+	
+	SELECT B.* FROM (								<!-- rownum 적용을 안했었음.. 수정 3중 select -->
+		SELECT ROWNUM RN, A.* FROM ( 
+			SELECT    USERID
+					, REVNUM
+					, PROUNQ
+					, NICKNAME
+					, REVCONT
+					, REVDATE
+					, REVGRADE
+					, REVFILENAME
+			FROM 
+					REVIEW_BOARD
+				) A ) B
+		WHERE
+				RN BETWEEN '${firstIndex}' AND '${lastIndex}'
+		
+	</select>
+	
+	<select id="reviewSelectTotal" resultType="int">
+	
+		SELECT COUNT(*) FROM REVIEW_BOARD
+		
+	</select>
+	
+	<select id="reviewSelectDetail" resultType="reviewVO"><!-- reviewSelectDetail --> 
+	
+		SELECT    USERID
+				, REVNUM
+				, PROUNQ
+				, NICKNAME
+				, REVCONT
+				, REVDATE
+				, REVGRADE
+				, REVFILENAME 
+		FROM 
+				REVIEW_BOARD
+		WHERE
+				REVNUM = '${revnum}'
+		
+		
+	</select>
+	<select id="reviewSelectDetailrevnum" resultType="reviewVO">
+	
+			SELECT    USERID
+				, REVNUM
+				, PROUNQ
+				, NICKNAME
+				, REVCONT
+				, REVDATE
+				, REVGRADE
+				, REVFILENAME
+		FROM 
+				REVIEW_BOARD
+		WHERE
+				REVNUM = '${revnum}'
+	
+	</select>
+	
+	<select id="revSelectAvg" resultType="double">
+	
+		SELECT NVL(ROUND(AVG(REVGRADE),1),0) FROM REVIEW_BOARD
+	
+	</select>
+	
+	<!-- ================================================================================ -->
+	
+	<insert id="reviewInsert">
+	
+		INSERT INTO REVIEW_BOARD (    USERID
+									, PROUNQ
+									, NICKNAME
+									, REVCONT
+									, REVDATE
+									, REVGRADE
+									, REVFILENAME
+									, REVNUM )
+		
+		VALUES(   '${userid}' 	<!-- 세션값 적용! -->
+				, '${prounq}'		<!-- 상품번호 -->
+				, '${nickname}'		<!-- 닉네임 -->
+				, '${revcont}'
+				, SYSDATE
+				, '${revgrade}'
+				, '${revfilename}'
+				, (SELECT NVL(MAX(REVNUM),'0')+1 FROM REVIEW_BOARD) )
+	
+	</insert>
+	
+		<update id="reviewUpdate">
+		UPDATE REVIEW_BOARD 
+			SET
+				 REVGRADE  = #{revgrade}
+				,REVCONT    = #{revcont}
+				,REVFILENAME = #{revfilename}
+	  	WHERE  
+			REVNUM = #{revnum}
+	</update>
+	
+	
+	<update id="reviewUpdateFilename">
+		update REVIEW_BOARD 
+          set 
+            REVFILENAME=(select replace(REVFILENAME,'${revfilename}／','') 
+			from REVIEW_BOARD 
+                       where REVNUM='${revnum}')
+       	where REVNUM='${revnum}' 
+	</update>
+	
+	<delete id="reviewDelete">
+	
+		DELETE FROM REVIEW_BOARD 
+		WHERE
+				REVNUM = #{revnum}
+	
+	</delete>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+</mapper>
